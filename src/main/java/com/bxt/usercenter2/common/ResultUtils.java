@@ -22,16 +22,5 @@ public class ResultUtils<T> {
     public static BaseResponse error(int code,String description, String message){
         return new BaseResponse<>(code,message,description);
     }
-//    public static BaseResponse params_error(){
-//        return new BaseResponse<>(40000,"params_error","failed");
-//    }
-//    public static BaseResponse null_error(){
-//        return new BaseResponse<>(40001,"null_error","failed");
-//    }
-//    public static BaseResponse not_login(){
-//        return new BaseResponse<>(40002,"not_login","failed");
-//    }
-//    public static BaseResponse no_auth(){
-//        return new BaseResponse<>(40010,"no_auth","failed");
-//    }
+
 }

@@ -1,6 +1,7 @@
 package com.bxt.usercenter2.model.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -33,16 +34,19 @@ public class Team {
     /**
      * 
      */
+    @TableField("maxNum")
     private Integer maxNum;
 
     /**
      * 
      */
+    @TableField("expireTime")
     private Date expireTime;
 
     /**
      * 用户id
      */
+    @TableField("userId")
     private Long userId;
 
     /**
@@ -58,15 +62,18 @@ public class Team {
     /**
      * 创建时间
      */
+    @TableField("createTime")
     private Date createTime;
 
     /**
      * 
      */
+    @TableField("updateTime")
     private Date updateTime;
 
     /**
      * 0-未删除 1-删除
      */
+    @TableField("isDelete")
     private Integer isDelete;
 }

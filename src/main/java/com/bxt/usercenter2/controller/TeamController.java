@@ -7,16 +7,19 @@ import com.bxt.usercenter2.common.BaseResponse;
 import com.bxt.usercenter2.common.ErrorCode;
 import com.bxt.usercenter2.common.ResultUtils;
 import com.bxt.usercenter2.dto.PageRequest;
+import com.bxt.usercenter2.dto.TeamAddRequest;
 import com.bxt.usercenter2.dto.TeamQuery;
 import com.bxt.usercenter2.exception.BusinessException;
 import com.bxt.usercenter2.model.domain.Team;
 import com.bxt.usercenter2.service.TeamService;
 import com.bxt.usercenter2.service.userService;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.crypto.interfaces.PBEKey;
+import java.util.Date;
 import java.util.List;
 
 @RestController
@@ -29,13 +32,23 @@ public class TeamController {
     private TeamService teamService;
 
     @PostMapping("/add")
-    public BaseResponse<Long> addTeam(@RequestBody Team team){
-        if (team==null) {
+    public BaseResponse<Long> addTeam(@RequestBody TeamAddRequest teamAddRequest, HttpServletRequest request){
+        if (teamAddRequest==null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空");
         }
-        boolean save=teamService.save(team);
-        if (!save) throw new BusinessException(ErrorCode.SYSTEM_ERROR,"插入失败");
-        return ResultUtils.success(team.getId());
+        Team team = new Team();
+        try {
+            BeanUtils.copyProperties(team, teamAddRequest);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"参数复制失败");
+        }
+
+        team.setCreateTime(new Date());
+        long result=teamService.addTeam(team, userService.getLoginUser(request));
+        if (result<=0) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"添加失败");
+        }
+        return ResultUtils.success(result);
     }
 
     @PostMapping("/delete")
