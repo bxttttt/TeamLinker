@@ -50,7 +50,7 @@ public class Team {
     private Long userId;
 
     /**
-     * 0-公开 1-私有 2-加密
+     * 0-公开且任何人可加入 1-公开但经审核可加入 2-加密 3-私有
      */
     private Integer status;
 

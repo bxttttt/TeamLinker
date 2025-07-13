@@ -4,9 +4,10 @@ import com.bxt.usercenter2.common.ErrorCode;
 import com.bxt.usercenter2.exception.BusinessException;
 
 public enum StatusCode {
-    PUBLIC(0,"public"),
-    PRIVATE(1,"private"),
-    SECRET(2,"secret");
+    PUBLIC_AND_EVERYONE(0,"public and everyone"),
+    PUBLIC_AND_LIMITED(1,"public and limited"),
+    SECRET(2,"secret"),
+    PRIVATE(3,"private");
 
 
 

@@ -11,4 +11,5 @@ import com.bxt.usercenter2.model.domain.UserTeam;
 */
 public interface UserTeamService extends IService<UserTeam> {
 
+
 }
