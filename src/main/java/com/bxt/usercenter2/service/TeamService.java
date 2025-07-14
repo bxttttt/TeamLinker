@@ -32,5 +32,8 @@ public interface TeamService extends IService<Team> {
 
     Long joinTeamStatus0(long teamId, user loginUser);
 
-    Long joinTeamStatus1(long teamId, user loginUser, String password);
+    boolean addUserToTeam(Long userId, Long teamId);
+
+    Long joinTeamStatus1(long teamId, user loginUser);
+
 }

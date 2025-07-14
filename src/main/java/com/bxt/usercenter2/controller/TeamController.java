@@ -10,6 +10,7 @@ import com.bxt.usercenter2.common.ResultUtils;
 import com.bxt.usercenter2.dto.PageRequest;
 import com.bxt.usercenter2.dto.TeamAddRequest;
 import com.bxt.usercenter2.dto.TeamQuery;
+import com.bxt.usercenter2.enums.StatusCode;
 import com.bxt.usercenter2.exception.BusinessException;
 import com.bxt.usercenter2.model.domain.Team;
 import com.bxt.usercenter2.service.TeamService;
@@ -53,23 +54,34 @@ public class TeamController {
         return ResultUtils.success(result);
     }
 
-//    @PostMapping("/join")
-//    public BaseResponse<Long> joinTeam(@RequestBody TeamAddRequest teamAddRequest, HttpServletRequest request){
-//        if (teamAddRequest==null) {
-//            throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空");
-//        }
-//        Team team = new Team();
-//        try {
-//            BeanUtils.copyProperties(team, teamAddRequest);
-//        } catch (Exception e) {
-//            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"参数复制失败");
-//        }
-//        long result=teamService.joinTeam(team.getId(), userService.getLoginUser(request));
-//        if (result<=0) {
-//            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"加入失败");
-//        }
-//        return ResultUtils.success(result);
-//    }
+    @PostMapping("/join")
+    public BaseResponse<Long> joinTeam(Long teamId, HttpServletRequest request){
+        if (teamId==null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空");
+        }
+        if (teamId<=0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数错误");
+        }
+        if (userService.getLoginUser(request) == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN, "用户未登录");
+        }
+        Team team = teamService.getById(teamId);
+        if (team == null) {
+            throw new BusinessException(ErrorCode.NULL_ERROR, "队伍不存在");
+        }
+        long result=-1;
+        if (team.getStatus()== StatusCode.PUBLIC_AND_EVERYONE.getCode()){
+            result=teamService.joinTeamStatus0(teamId, userService.getLoginUser(request));
+        }
+        if (team.getStatus()==StatusCode.PUBLIC_AND_LIMITED.getCode()){
+            result=teamService.joinTeamStatus1(teamId, userService.getLoginUser(request));
+        }
+        if (result<=0) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"加入失败");
+        }
+        return ResultUtils.success(result);
+
+    }
 
     @PostMapping("/delete")
     public BaseResponse<Long> deleteTeam(@RequestBody long id){
@@ -126,6 +138,7 @@ public class TeamController {
         }
         return ResultUtils.success(teamPage);
     }
+
 
 //    @GetMapping("/list")
 //    public BaseResponse<List<Team>> listTeams(@RequestBody TeamQuery teamQuery) {

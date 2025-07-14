@@ -5,6 +5,7 @@
 <mapper namespace="com.bxt.usercenter2.mapper.MailMapper">
 
     <resultMap id="BaseResultMap" type="com.bxt.usercenter2.model.domain.Mail">
+            <id property="mailId" column="mailId" />
             <result property="sendUserId" column="sendUserId" />
             <result property="receiveUserId" column="receiveUserId" />
             <result property="relatedTeam" column="relatedTeam" />
@@ -13,10 +14,11 @@
             <result property="haveRead" column="haveRead" />
             <result property="createTime" column="createTime" />
             <result property="updateTime" column="updateTime" />
+            <result property="mailType" column="mailType" />
     </resultMap>
 
     <sql id="Base_Column_List">
-        sendUserId,receiveUserId,relatedTeam,message,isDelete,haveRead,
-        createTime,updateTime
+        mailId,sendUserId,receiveUserId,relatedTeam,message,isDelete,
+        haveRead,createTime,updateTime,mailType
     </sql>
 </mapper>

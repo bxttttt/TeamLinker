@@ -1,6 +1,8 @@
 package com.bxt.usercenter2.model.domain;
 
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
@@ -16,20 +18,26 @@ public class Mail {
     /**
      * 
      */
+    @TableId(type = IdType.AUTO,value = "mailId")
+    private Long mailId;
+
+    /**
+     * 
+     */
     @TableField("sendUserId")
-    private String sendUserId;
+    private Long sendUserId;
 
     /**
      * 
      */
     @TableField("receiveUserId")
-    private String receiveUserId;
+    private Long receiveUserId;
 
     /**
      * 
      */
     @TableField("relatedTeam")
-    private String relatedTeam;
+    private Long relatedTeam;
 
     /**
      * 
@@ -60,4 +68,10 @@ public class Mail {
      */
     @TableField("updateTime")
     private Date updateTime;
+
+    /**
+     * 0-普通信件 1-申请入群的信件
+     */
+    @TableField("mailType")
+    private Integer mailType;
 }

@@ -8,9 +8,11 @@ import com.bxt.usercenter2.common.ErrorCode;
 import com.bxt.usercenter2.enums.StatusCode;
 import com.bxt.usercenter2.exception.BusinessException;
 import com.bxt.usercenter2.mapper.TeamMapper;
+import com.bxt.usercenter2.model.domain.Mail;
 import com.bxt.usercenter2.model.domain.Team;
 import com.bxt.usercenter2.model.domain.UserTeam;
 import com.bxt.usercenter2.model.domain.user;
+import com.bxt.usercenter2.service.MailService;
 import com.bxt.usercenter2.service.TeamService;
 
 import com.bxt.usercenter2.service.UserTeamService;
@@ -19,6 +21,7 @@ import com.bxt.usercenter2.vo.TeamUserVO;
 import jakarta.annotation.Resource;
 import org.springdoc.core.converters.ResponseSupportConverter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -29,6 +32,7 @@ import java.util.Objects;
 * @description 针对表【team】的数据库操作Service实现
 * @createDate 2025-06-26 15:58:52
 */
+
 @Service
 public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     implements TeamService {
@@ -267,33 +271,63 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍状态不允许加入");
         }
 
-        // 添加用户到队伍
-        UserTeam userTeam = new UserTeam();
-        userTeam.setUserId(loginUser.getId());
-        userTeam.setTeamId(teamId);
-        userTeam.setJoinTime(team.getCreateTime());
-        boolean save = userTeamService.save(userTeam);
+        // 直接加入队伍，不需要审核
+        boolean save=addUserToTeam(loginUser.getId(), teamId);
         if (!save) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "加入队伍失败");
         }
         return teamId;
     }
     @Override
-    public Long joinTeamStatus1(long teamId, user loginUser, String password) {
+    public boolean addUserToTeam(Long userId, Long teamId) {
+        if (userId == null || teamId == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户ID或队伍ID不能为空");
+        }
+        Team team = this.getById(teamId);
+        if (team == null) {
+            throw new BusinessException(ErrorCode.NULL_ERROR, "队伍不存在");
+        }
+        if (team.getMaxNum() <= getSumPeople(team)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍人数已满");
+        }
+        UserTeam userTeam = new UserTeam();
+        userTeam.setUserId(userId);
+        userTeam.setTeamId(teamId);
+        userTeam.setJoinTime(team.getCreateTime());
+        return userTeamService.save(userTeam);
+    }
+    @Autowired
+    @Lazy
+    private MailService mailService;
+    @Override
+    public Long joinTeamStatus1(long teamId, user loginUser) {
         Team team = checkTeamCanJoin(teamId, loginUser);
         if (team == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍状态不允许加入");
         }
-        // 添加用户到队伍
-        // todo 
-        UserTeam userTeam = new UserTeam();
-        userTeam.setUserId(loginUser.getId());
-        userTeam.setTeamId(teamId);
-        userTeam.setJoinTime(team.getCreateTime());
-        boolean save = userTeamService.save(userTeam);
-        if (!save) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "加入队伍失败");
+        // 发送验证消息
+        Mail mail = new Mail();
+        mail.setRelatedTeam(teamId);
+        mail.setSendUserId(loginUser.getId());
+        mail.setReceiveUserId(team.getUserId());
+        mail.setMessage("用户 " + loginUser.getUserAccount() + " 请求加入队伍 " + team.getName() + "，请确认。");
+        mail.setHaveRead(0); // 0表示未处理
+        mail.setMailType(1); // 1表示加入队伍请求
+        QueryWrapper<Mail> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("relatedTeam", teamId)
+                .eq("sendUserId", loginUser.getId())
+                .eq("receiveUserId", team.getUserId())
+                .eq("haveRead", 0);
+        long count = mailService.count(queryWrapper);
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "已发送加入请求，请等待处理");
         }
+        boolean saveMail = mailService.save(mail);
+        if (!saveMail) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "发送加入请求失败");
+        }
+
+
         return teamId;
     }
 
