@@ -121,6 +121,7 @@ public class MailController {
         return ResultUtils.success(result);
     }
     // 查看某个邮件详情
+    // 发送人和接收人都可以查看，如果接收人查看，则需要将邮件状态设置为已读
     @GetMapping("/viewMail")
     public BaseResponse<MailVO> viewMail(@RequestParam Long mailId, HttpServletRequest httpServletRequest) {
         // 获取登录用户

@@ -318,12 +318,14 @@ public class MailServiceImpl extends ServiceImpl<MailMapper, Mail>
         if (mail == null || mail.getIsDelete() == 1) {
             throw new BusinessException(ErrorCode.NULL_ERROR, "邮件不存在或已被删除");
         }
-        if (!mail.getReceiveUserId().equals(loginUser.getId())) {
+        if (!mail.getReceiveUserId().equals(loginUser.getId())&&!mail.getSendUserId().equals(loginUser.getId())) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "您没有权限查看此邮件");
         }
         System.out.println("查看邮件：" + mailId + "，发送者ID：" + mail.getSendUserId() + "，接收者ID：" + mail.getReceiveUserId());
         // 设置为已读
-        mail.setHaveRead(1);
+        if (mail.getReceiveUserId().equals(loginUser.getId())){
+            mail.setHaveRead(1);
+        }
         updateById(mail);
 
         MailVO mailVO = new MailVO();

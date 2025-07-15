@@ -13,9 +13,11 @@ import com.bxt.usercenter2.dto.TeamQuery;
 import com.bxt.usercenter2.enums.StatusCode;
 import com.bxt.usercenter2.exception.BusinessException;
 import com.bxt.usercenter2.model.domain.Team;
+import com.bxt.usercenter2.model.domain.user;
 import com.bxt.usercenter2.service.TeamService;
 import com.bxt.usercenter2.service.userService;
 import com.bxt.usercenter2.vo.TeamUserVO;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.beanutils.BeanUtils;
@@ -55,7 +57,7 @@ public class TeamController {
     }
 
     @PostMapping("/join")
-    public BaseResponse<Long> joinTeam(Long teamId, HttpServletRequest request){
+    public BaseResponse<Long> joinTeam(Long teamId, String pwd,HttpServletRequest request){
         if (teamId==null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空");
         }
@@ -71,10 +73,13 @@ public class TeamController {
         }
         long result=-1;
         if (team.getStatus()== StatusCode.PUBLIC_AND_EVERYONE.getCode()){
-            result=teamService.joinTeamStatus0(teamId, userService.getLoginUser(request));
+            result=teamService.joinTeamEveryoneCanJoin(teamId, userService.getLoginUser(request));
         }
         if (team.getStatus()==StatusCode.PUBLIC_AND_LIMITED.getCode()){
-            result=teamService.joinTeamStatus1(teamId, userService.getLoginUser(request));
+            result=teamService.joinTeamEveryoneNeedAgreement(teamId, userService.getLoginUser(request));
+        }
+        if (team.getStatus()==StatusCode.SECRET.getCode()){
+            result=teamService.joinTeamEveryoneNeedPassword(teamId, userService.getLoginUser(request), pwd);
         }
         if (result<=0) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR,"加入失败");
@@ -83,13 +88,13 @@ public class TeamController {
 
     }
 
-    @PostMapping("/delete")
-    public BaseResponse<Long> deleteTeam(@RequestBody long id){
-        if (id<=0) throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数错误");
-        boolean result=teamService.removeById(id);
-        if (!result) throw new BusinessException(ErrorCode.SYSTEM_ERROR,"删除失败");
-        return ResultUtils.success(id);
-    }
+//    @PostMapping("/delete")
+//    public BaseResponse<Long> deleteTeam(@RequestBody long id){
+//        if (id<=0) throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数错误");
+//        boolean result=teamService.removeById(id);
+//        if (!result) throw new BusinessException(ErrorCode.SYSTEM_ERROR,"删除失败");
+//        return ResultUtils.success(id);
+//    }
 
     @PostMapping("/update")
     public BaseResponse<Long> updateTeam(@RequestBody Team team){
@@ -101,13 +106,13 @@ public class TeamController {
         return ResultUtils.success(team.getId());
     }
 
-    @GetMapping("/get")
-    public BaseResponse<Team> getTeamById(@RequestParam long id){
-        if (id<=0) throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数错误");
-        Team result=teamService.getById(id);
-        if (result==null) throw new BusinessException(ErrorCode.NULL_ERROR,"查找失败");
-        return ResultUtils.success(result);
-    }
+//    @GetMapping("/get")
+//    public BaseResponse<Team> getTeamById(@RequestParam long id){
+//        if (id<=0) throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数错误");
+//        Team result=teamService.getById(id);
+//        if (result==null) throw new BusinessException(ErrorCode.NULL_ERROR,"查找失败");
+//        return ResultUtils.success(result);
+//    }
     @GetMapping("/searchTeam/ById")
     public BaseResponse<TeamUserVO> searchTeamById(@RequestParam long teamId, HttpServletRequest request) {
         if (teamId <= 0) {
@@ -138,6 +143,134 @@ public class TeamController {
         }
         return ResultUtils.success(teamPage);
     }
+    // 显示用户加入的队伍
+    @GetMapping("/myJoinedTeams")
+    public BaseResponse<List<Team>> myJoinedTeams(PageRequest pageRequest, HttpServletRequest request) {
+        if (userService.getLoginUser(request) == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN, "用户未登录");
+        }
+        List<Team> teamPage = teamService.getJoinedTeams(userService.getLoginUser(request));
+        if (teamPage == null || teamPage.isEmpty()) {
+            throw new BusinessException(ErrorCode.NULL_ERROR, "没有加入的队伍");
+        }
+        return ResultUtils.success(teamPage);
+    }
+    // 显示用户创建的队伍
+    @GetMapping("/myCreatedTeams")
+    public BaseResponse<List<Team>> myCreatedTeams(PageRequest pageRequest, HttpServletRequest request) {
+        if (userService.getLoginUser(request) == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN, "用户未登录");
+        }
+        List<Team> teamPage = teamService.getCreatedTeams(userService.getLoginUser(request));
+        if (teamPage == null || teamPage.isEmpty()) {
+            throw new BusinessException(ErrorCode.NULL_ERROR, "没有创建的队伍");
+        }
+        return ResultUtils.success(teamPage);
+    }
+    // 退出队伍，返回是普通成员还是群主
+    // 1-群主退出 0-普通成员退出
+    @PostMapping("/exit")
+    public BaseResponse<Integer> exitTeam(@RequestParam long teamId, HttpServletRequest request) {
+        if (teamId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍ID错误");
+        }
+        if (userService.getLoginUser(request) == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN, "用户未登录");
+        }
+        int result = teamService.checkUserExitTeam(teamId, userService.getLoginUser(request));
+
+        return ResultUtils.success(result);
+    }
+    // 普通成员退出队伍
+    @PostMapping("/exit/Member")
+    public BaseResponse<Boolean> exitTeamMember(@RequestParam long teamId, HttpServletRequest request) {
+        if (teamId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍ID错误");
+        }
+        if (userService.getLoginUser(request) == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN, "用户未登录");
+        }
+        boolean result = teamService.exitTeamAsMember(teamId, userService.getLoginUser(request));
+        if (!result) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "退出队伍失败");
+        }
+        return ResultUtils.success(true);
+    }
+    // 群主退出队伍，返回队伍人数
+    @PostMapping("/exit/Dissolve")
+    public BaseResponse<Integer> exitTeamDissolve(@RequestParam long teamId, HttpServletRequest request) {
+        if (teamId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍ID错误");
+        }
+        if (userService.getLoginUser(request) == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN, "用户未登录");
+        }
+        int result = teamService.exitTeamAsOwner(teamId, userService.getLoginUser(request));
+        return ResultUtils.success(result);
+    }
+    // 群主解散队伍
+    @PostMapping("/exit/dissolve")
+    public BaseResponse<Boolean> dissolveTeam(@RequestParam long teamId, HttpServletRequest request) {
+        if (teamId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍ID错误");
+        }
+        if (userService.getLoginUser(request) == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN, "用户未登录");
+        }
+        boolean result = teamService.dissolveTeam(teamId, userService.getLoginUser(request));
+        if (!result) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "解散队伍失败");
+        }
+        return ResultUtils.success(true);
+    }
+    // 群主转让队伍再退出
+    @PostMapping("/exit/transfer")
+    public BaseResponse<Boolean> exitAndTransferTeam(@RequestParam long teamId, @RequestParam long newOwnerId, HttpServletRequest request) {
+        if (teamId <= 0 || newOwnerId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍ID或新群主ID错误");
+        }
+        if (userService.getLoginUser(request) == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN, "用户未登录");
+        }
+        boolean result = teamService.transferTeamOwnership(teamId, userService.getLoginUser(request), newOwnerId);
+        if (!result) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "转让队伍失败");
+        }
+        // 退出队伍
+        boolean exitResult = teamService.exitTeamAsMember(teamId, userService.getLoginUser(request));
+        return ResultUtils.success(true);
+    }
+    // 群主转让队伍
+    @PostMapping("/transfer")
+    public BaseResponse<Boolean> transferTeam(@RequestParam long teamId, @RequestParam long newOwnerId, HttpServletRequest request) {
+        if (teamId <= 0 || newOwnerId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍ID或新群主ID错误");
+        }
+        if (userService.getLoginUser(request) == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN, "用户未登录");
+        }
+        boolean result = teamService.transferTeamOwnership(teamId, userService.getLoginUser(request),newOwnerId);
+        if (!result) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "转让队伍失败");
+        }
+        return ResultUtils.success(true);
+    }
+    // 返回一个队伍的所有成员
+    @GetMapping("/members")
+    public BaseResponse<List<user>> getTeamMembers(@RequestParam long teamId, HttpServletRequest request) {
+        if (teamId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍ID错误");
+        }
+        if (userService.getLoginUser(request) == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN, "用户未登录");
+        }
+        List<user> members = teamService.getTeamUsers(teamId);
+        if (members == null || members.isEmpty()) {
+            throw new BusinessException(ErrorCode.NULL_ERROR, "没有找到队伍成员");
+        }
+        return ResultUtils.success(members);
+    }
+
 
 
 //    @GetMapping("/list")
